@@ -9,6 +9,8 @@
 /// animations – we need to know when the animation ended, and that info is available only
 /// from `navigationController:didShowViewController:animated:`.
 @property (weak, nonatomic) id<UINavigationControllerDelegate> realDelegate;
+/// A Boolean value indicating that we'regoing to prevent interactive pop behavior. It's being reset on each view controller based on it ahk_preventInteractivePop optional method. Default value is NO.
+@property (nonatomic) BOOL preventInteractivePop;
 @end
 
 @implementation AHKNavigationController
@@ -58,6 +60,12 @@
     NSCAssert(self.interactivePopGestureRecognizer.delegate == self, @"AHKNavigationController won't work correctly if you change interactivePopGestureRecognizer's delegate.");
 
     self.duringPushAnimation = NO;
+    self.preventInteractivePop = NO;
+
+    SEL preventSelector = NSSelectorFromString(@"ahk_preventInteractivePop");
+    if ([viewController respondsToSelector:preventSelector]) {
+        self.preventInteractivePop = [viewController performSelector:preventSelector];
+    }
 
     if ([self.realDelegate respondsToSelector:_cmd]) {
         [self.realDelegate navigationController:navigationController didShowViewController:viewController animated:animated];
@@ -72,7 +80,8 @@
         // Disable pop gesture in two situations:
         // 1) when the pop animation is in progress
         // 2) when user swipes quickly a couple of times and animations don't have time to be performed
-        return [self.viewControllers count] > 1 && !self.isDuringPushAnimation;
+        // 3) when a current controller prevent this behavior explicitly
+        return [self.viewControllers count] > 1 && !self.isDuringPushAnimation && !self.preventInteractivePop;
     } else {
         // default value
         return YES;
